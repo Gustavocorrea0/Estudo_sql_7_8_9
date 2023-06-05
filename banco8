@@ -1,0 +1,237 @@
+--------------------------|1 - Pedidos de um cliente|------------------------------------------------
+
+create or replace procedure compras_cliente(nome_cliente varchar) as $$
+
+begin
+
+	if nome_cliente is null
+
+		or nome_cliente = '' then raise exception 'nome invalido';
+
+	end if;
+
+	select *
+
+	from pedido
+
+	where cliente = nome_cliente;
+
+end;
+
+$$ language plpgsql;
+
+---------------------------|2 - Conversao de dolar para real|-------------------------------------
+
+create table cotacao (
+
+	id int not null primary key,
+
+	data date not null,
+
+	valor_dolar numeric(10, 2) not null
+
+);
+
+insert into cotacao (id, data, valor_dolar) 
+
+	VALUES (1,current_date, 4.96);
+
+
+
+create or replace procedure converter_dolar_para_real(dolar numeric) as $$
+
+declare
+
+    valor_cotacao numeric;
+
+    valor_real numeric;
+
+begin
+
+    select valor_dolar into valor_cotacao
+
+    FROM cotacao
+
+    where data = current_date;
+
+    if valor_cotacao is NULL then
+
+        raise exception 'Cotação do dia não encontrada';
+
+    end if;
+
+    valor_real := dolar * valor_cotacao;
+
+    raise notice 'O valor em reais é: %', valor_real;
+
+end;
+
+$$
+
+language plpgsql;
+
+---------------------------|3 - Retorna a quantidade disponivel|----------------------------------------
+
+create or replace procedure verificar_estoque( produto_nome varchar)
+
+language plpgsql as $$
+
+declare 
+
+	estoque_disponivel numeric;
+
+begin 
+
+	select estoque into estoque_disponivel
+
+	from produto
+
+	where nome = produto_nome;
+
+
+	if estoque_atual is not null then
+
+		raise notice 'quantidade disponivel em estoque de produto %: %', produto_nome, estoque_disponivel;
+
+	else
+
+		raise notice 'produto % no encontrado', produto_nome;
+
+	end if;
+
+end;
+
+$$;
+
+---------------------------|4 - Cancelar pedido|------------------------------------------------
+
+create or replace procedure cancelamento_pedido(id_do_pedido int) language plpgsql as $$
+
+begin 
+
+	update pedido
+
+	set status = 'cancelado'
+
+	where id = id_do_pedido;
+
+
+	if found then
+
+		raise notice 'pedido % cancelado', id_do_pedido;
+
+	else
+
+		raise notice 'pedido nao encontrado';
+
+	end if;
+
+end; $$;
+
+---------------------------|5 - Alterar senha|-------------------------------------
+
+create or replace procedure alterar_senha(nome_novo varchar, senha_nova varchar) language plpgsql as $$
+
+begin
+
+	update cliente
+
+	set senha = senha_nova
+
+	where nome = nome_novo;
+
+	if found then
+
+		raise notice 'senha atualizada';
+
+	else
+
+		raise notice 'cliente nao encontrado';
+
+	end if;
+
+end; $$;
+
+
+
+call alterar_senha('gustavo', 'senhaDif1cil');
+
+---------------------------|6 - Atualizar descricao|----------------------------------------
+
+create or replace procedure alterar_descricao(nome_produto varchar, nova_descricao varchar) language plpgsql as $$
+
+begin
+
+	update produto
+
+	set descricao = nova_descricao
+
+	where nome = nome_produto;
+
+	if found then
+
+		raise notice 'descricao atualizada';
+
+	else
+
+		raise notice 'produto nao encontrado';
+
+	end if;
+
+end; $$;
+
+
+
+call alterar_descricao('', '');
+
+---------------------------|7 - Valor total gasto|---------------------------------------
+
+create or replace procedure calcular_valor_total_gasto(nome_cliente varchar, out total_gasto numeric)
+
+language plpgsql
+
+as $$
+
+begin
+
+    select coalesce(sum(p.preco_total), 0)
+
+    into total_gasto
+
+    from pedido_compra pc
+
+    join pessoa p on pc.cliente_id = p.id
+
+    where p.nome = nome_cliente;
+
+end;
+
+$$;
+
+---------------------------|8 - atualizar idade|---------------------------------------
+
+create or replace procedure atualizar_idade(nome_cliente varchar, nova_idade integer) language plpgsql as $$
+
+begin
+
+	update pessoa
+
+	set idade = nova_idade
+
+	where nome = nome_cliente;
+
+end; $$;
+
+---------------------------|9 - Atualizar pedido|------------------------------------------------
+
+create or replace procedure atualizar_pedido(id_do_pedido int) language plpgsql as $$
+
+begin 
+
+	update pedido
+
+	set status = 'enviado'
+
+	where id = id_do_pedido;
+
+end; $$;
